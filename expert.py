@@ -1,47 +1,40 @@
 import re
 import json
-from langchain.chat_models import ChatOpenAI, ChatAnthropic
+from langchain.chat_models import AzureChatOpenAI
 from langchain.schema import HumanMessage, SystemMessage
 import datetime
 from pathlib import Path
 import os 
 
-openai_api_key = os.environ.get('OPENAI_API_KEY')
+aoi_api_key = os.environ.get('AOI_API_KEY')
+aoi_api_base = os.environ.get('AOI_API_BASE')
+aoi_api_version = os.environ.get('AOI_API_VERSION')
 anthropic_api_key = os.environ.get('ANTHROPIC_API_KEY')
-if openai_api_key is None:
+if aoi_api_key is None:
     from dotenv import load_dotenv
     load_dotenv()
-    openai_api_key = os.environ.get('OPENAI_API_KEY')
+    aoi_api_key = os.environ.get('AOI_API_KEY')
+    aoi_api_base = os.environ.get('AOI_API_BASE')
+    aoi_api_version = os.environ.get('AOI_API_VERSION')
 
 if anthropic_api_key is None:
     from dotenv import load_dotenv
     load_dotenv()
     anthropic_api_key = os.environ.get('ANTHROPIC_API_KEY')
 
+# print "Base is: value of aoi_api_base"
+print(f"Base is: {aoi_api_base}")
 
 # At the moment langchain API wrappers are needed due to the separation of chat models and language models. These wrappers allow us to use the same interface for both.
 # Class to communicate with OpenAI for generating responses. Wrapped around the langchain wrappers
-class OpenAIModel():
-    def __init__(self, openai_api_key=None, **model_params):
-        if openai_api_key is None:
-            raise ValueError('OpenAI API key must be provided')
-        self.chat = ChatOpenAI(openai_api_key=openai_api_key, **model_params)
+class AzureOpenAIModel():
+    def __init__(self, aoi_deployment=None, aoi_api_key=None, aoi_api_base=None, aoi_api_version=None,  **model_params):
+        if aoi_api_key is None:
+            raise ValueError('Azure OpenAI API key must be provided')
+        self.chat = AzureChatOpenAI(deployment_name=aoi_deployment, openai_api_version=aoi_api_version, openai_api_key=aoi_api_key, openai_api_base=aoi_api_base, **model_params)
     
     def __call__(self, request_messages):
         return self.chat(request_messages).content
-    
-    def bulk_generate(self, message_list):
-        return self.chat.generate(message_list)
-
-class AnthropicModel():
-    def __init__(self, anthropic_api_key=None, **model_params):
-        if anthropic_api_key is None:
-            raise ValueError('Anthropic API key must be provided')
-        self.chat = ChatAnthropic(model=model_params['model_name'], max_tokens_to_sample=model_params['max_tokens'], anthropic_api_key=anthropic_api_key)
-    
-    def __call__(self, request_messages):
-        # Convert request_messages into a single string to be used as preamble
-        return self.chat(request_messages)
     
     def bulk_generate(self, message_list):
         return self.chat.generate(message_list)
@@ -69,7 +62,7 @@ class LanguageExpert:
         
         ##Set default model parameters if none provided##
         if model_params is None:  
-            model_params = {"model_name": "claude-v1.3", "temperature":  0.00,  
+            model_params = {"model_name": "gpt-35-turbo", "temperature":  0.00,  
                             "frequency_penalty": 1.0, "presence_penalty":  0.5,  
                             "n": 1, "max_tokens":  512}
         self.model_params = model_params
@@ -212,9 +205,7 @@ class LanguageExpert:
         on the model_name parameter. 
         """
         if 'gpt' in self.model_params["model_name"]:
-            self.chat = OpenAIModel(openai_api_key=openai_api_key, **self.model_params)
-        elif 'claude' in self.model_params["model_name"]:
-            self.chat = AnthropicModel(anthropic_api_key=anthropic_api_key, **self.model_params)
+            self.chat = AzureOpenAIModel(aoi_deployment=self.model_params["model_name"], aoi_api_key=aoi_api_key, aoi_api_base=aoi_api_base, aoi_api_version=aoi_api_version, **self.model_params)
         else:
             raise 'Model not supported'
     

@@ -9,10 +9,10 @@ from langchain.text_splitter import TokenTextSplitter
 import webvtt
 
 global bullet_expert
+global chapter_creator
 bullet_expert = {'name': 'Meetings Minutes Writer', 
-                 'system_message': 'You are a helpful assitant that generates bulleted meeting summaries.',  
-                 'model_params': {'model_name': 'claude-2', 'temperature': 0.7, 'frequency_penalty': 1.0, 'presence_penalty': 0.5, 'n': 1, 'max_tokens': 2048}}
-
+                 'system_message': 'You are a helpful assistant that generates bulleted meeting summaries. You use valid markdown syntax.',  
+                 'model_params': {'model_name': 'gpt-4-turbo', 'temperature': 0.7, 'frequency_penalty': 1.0, 'presence_penalty': 0.5, 'n': 1, 'max_tokens': 4096}}
 
 def chunk_text(text: str, chunk_size: int = 2048, chunk_overlap: int = 0) -> List[str]:
     """Split the text into chunks of a specified size."""
@@ -42,7 +42,7 @@ def convert_vtt_to_txt(infile, outfile):
             continue
         transcript += f" {line}"
         previous = line
-    with open(outfile, 'w') as f:
+    with open(outfile, 'w', encoding='utf-8') as f:
         f.write(transcript)
     print(f'Length of original:\t{len(vtt.content)} characters\nLength of final:\t{len(transcript)} characters\nPercent Reduction:\t{100 - len(transcript)*100/len(vtt.content):.0f}%')
 
@@ -115,7 +115,7 @@ def display_summary():
 
 
 def summarize(text_content, selected_model):
-    max_tokens = 75000 if 'claude' in selected_model else 4096
+    max_tokens = 8192
     chunks_of_text_content: List[str] = chunk_text(text_content, chunk_size=max_tokens)
     chunks_of_text_content: List[str] = [f'Summarize the following meeting in a bulleted format. Include as many details as possible. The summary should be about 1000 words long.\n\n<transcript>{chunk}</transcript>' for chunk in chunks_of_text_content]
     batched_chunks: List[List[str]] = batch_list(chunks_of_text_content)
